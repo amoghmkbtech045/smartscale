@@ -1,0 +1,115 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SmartScale: Proactive, Attack-Aware Autoscaling for Serverless Workloads</title>
+<style>
+:root{--bg:#f4f6f8;--s:#fff;--ink:#14213d;--mu:#5b6678;--ln:#d9dfe7;--bf:#c0392b;--af:#0f7b5f;--wn:#fde8e6;--am:#b7791f}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1420;--s:#161e2e;--ink:#e8edf5;--mu:#9aa6b8;--ln:#2a3548;--bf:#ff7a6b;--af:#3ddba8;--wn:#3a1f22;--am:#f0b45a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,sans-serif}
+main{max-width:1120px;margin:auto;padding:26px 16px 50px}h1{font-size:30px;line-height:1.15;margin:0;max-width:30ch}h3{margin:0 0 4px;font-size:15px}h4{margin:12px 0 2px;font-size:14px}
+.by{margin:8px 0 0;font-weight:600}.mu{color:var(--mu)}.sub{max-width:80ch;margin:8px 0 0}
+.tabs{display:flex;gap:6px;margin:18px 0;flex-wrap:wrap}.tabs button{background:var(--s);color:var(--ink);border:1px solid var(--ln)}.tabs button.on{background:var(--ink);color:var(--bg)}
+button{font:600 14px system-ui;padding:9px 16px;border:0;border-radius:6px;background:var(--ink);color:var(--bg);cursor:pointer}button:disabled{opacity:.4;cursor:default}
+.c{background:var(--s);border:1px solid var(--ln);border-radius:10px;padding:14px;min-width:0}.g{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.f{grid-column:1/-1}
+.sc{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.sc label{display:block;border:2px solid var(--ln);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--s)}
+.sc input{position:absolute;opacity:0}.sc label:has(input:checked){border-color:var(--af)}.sc label:has(input:focus-visible){outline:3px solid var(--am)}.sc b{display:block}.sc small{color:var(--mu)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--ln);margin-bottom:4px}
+.opt{display:flex;flex-wrap:wrap;gap:16px;align-items:end;margin-top:12px}label.f2{display:flex;flex-direction:column;font-size:12px;color:var(--mu);gap:3px}
+input[type=number]{font:inherit;padding:7px;width:90px;border:1px solid var(--ln);border-radius:6px;background:var(--bg);color:var(--ink)}.ck{flex-direction:row!important;align-items:center;gap:6px!important;font-size:13px!important;color:var(--ink)!important}
+canvas{width:100%;height:190px;display:block}.kp{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.kp div{background:var(--bg);border-radius:8px;padding:8px;font-size:12px;color:var(--mu)}.kp b{display:block;font-size:20px;color:var(--ink)}
+.b{color:var(--bf)}.a{color:var(--af)}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid var(--ln);text-align:left;font-size:14px}th{font-size:12px;color:var(--mu)}.sx{overflow-x:auto}
+.lg span{margin-right:14px;font-size:13px}.lg i{display:inline-block;width:18px;height:4px;margin-right:5px;vertical-align:middle}
+#verdict{border-left:4px solid var(--af);padding:8px 12px;background:var(--bg);border-radius:0 8px 8px 0;margin:10px 0 0}#log div{font-size:13px;color:var(--mu)}
+.pg{display:none}.pg.on{display:block}li{margin:5px 0}footer{margin-top:26px;font-size:13px;color:var(--mu);max-width:90ch}
+@media(max-width:820px){.g,.sc{grid-template-columns:1fr}.kp{grid-template-columns:1fr 1fr}}
+</style></head><body><main>
+<h1>SmartScale: Proactive, Attack-Aware Autoscaling for Serverless Workloads</h1>
+<p class="by">Amogh M Kashyap (1RVU23CSE045) &nbsp;|&nbsp; Vaibhav M Chittakki (1RUA24CSE7019)</p>
+<p class="sub mu">A live experiment comparing a conventional reactive autoscaler with a pipeline that detects attack traffic and forecasts demand, so instances are warm before users arrive. Both systems receive identical traffic and every latency shown is measured.</p>
+<div class="tabs"><button class="on" data-p="demo">Live experiment</button><button data-p="how">How it works</button><button data-p="met">Metrics explained</button></div>
+
+<div class="pg on" id="demo">
+<div class="c"><h3>1. Choose a traffic scenario</h3>
+<div class="sc" id="sc"></div>
+<div class="g" style="margin-top:10px"><div><h4 id="st">-</h4><p id="sd" class="mu" style="margin:2px 0"></p><h4>What to watch</h4><p id="sw" class="mu" style="margin:2px 0"></p></div>
+<div><h4>Expected traffic shape (requests per second)</h4><canvas id="cp" style="height:150px"></canvas></div></div>
+<h3 style="margin-top:12px">2. Set conditions (optional)</h3>
+<div class="opt"><label class="f2">Cold start (seconds)<input id="cold" type="number" min="1" max="8" step=".5" value="3"></label>
+<label class="f2">Latency target, SLA (ms)<input id="sla" type="number" value="300"></label>
+<label class="f2 ck"><input type="checkbox" id="flt" checked>Anomaly filter on</label><label class="f2 ck"><input type="checkbox" id="fcs" checked>Forecasting on</label>
+<button id="go" disabled>Start experiment (about 85 s)</button><button id="stop">Stop</button><span id="msg" class="mu"></span></div>
+<p class="mu" style="font-size:13px;margin:8px 0 0">Tip: switch off the filter or the forecaster to see how much each part of the AI system contributes on its own.</p></div>
+
+<div class="g">
+<div class="c"><h3 class="b">Before: reactive autoscaler</h3><div class="kp" id="kr"></div></div>
+<div class="c"><h3 class="a">After: forecasting + anomaly filter</h3><div class="kp" id="kp"></div></div>
+<div class="c f"><h3>Incoming traffic and forecast</h3><span class="mu">Requests per second. Red bands mark steps flagged as an attack. The amber dashed line is the demand the model forecast four seconds ahead.</span>
+<div class="lg"><span><i style="background:var(--ink)"></i>Arriving</span><span><i style="background:var(--af)"></i>Admitted after filter</span><span><i style="background:var(--am)"></i>Forecast</span></div><canvas id="c1"></canvas></div>
+<div class="c"><h3>p95 latency per step (ms)</h3><span class="mu">95% of users were faster than this. Dashed line is the SLA.</span><div class="lg"><span><i style="background:var(--bf)"></i>Before</span><span><i style="background:var(--af)"></i>After</span></div><canvas id="c2"></canvas></div>
+<div class="c"><h3>Running instances (billed)</h3><span class="mu">Each instance costs money while it runs or boots.</span><div class="lg"><span><i style="background:var(--bf)"></i>Before</span><span><i style="background:var(--af)"></i>After</span></div><canvas id="c3"></canvas></div>
+<div class="c f"><h3>Results: before vs after (measured)</h3><div class="sx"><table><thead><tr><th>Metric</th><th>Before</th><th>After</th><th>Change</th></tr></thead><tbody id="tb"><tr><td colspan=4 class="mu">Run an experiment to fill this table.</td></tr></tbody></table></div><p id="verdict" class="mu">Results appear here when a run finishes.</p></div>
+<div class="c f"><h3>Run history (this session)</h3><div class="sx"><table><thead><tr><th>Scenario</th><th>Cold start</th><th>Filter / forecast</th><th>p95 before</th><th>p95 after</th><th>Cost before</th><th>Cost after</th></tr></thead><tbody id="hs"><tr><td colspan=7 class="mu">No runs yet. Try every scenario to compare them.</td></tr></tbody></table></div></div>
+<div class="c f"><h3>Controller decisions (after system)</h3><div id="log"><div>No decisions yet.</div></div></div></div></div>
+
+<div class="pg" id="how"><div class="c"><h3>The problem</h3>
+<p>Serverless platforms start new instances only after existing ones get busy. A new instance needs seconds to boot (a cold start), so users queue during every surge. Reactive scaling also cannot tell a flash sale from an attack, so it pays for fake traffic as well.</p>
+<h3>The solution pipeline</h3><ol><li><b>Telemetry:</b> every 0.5 s step it measures request rate, endpoint entropy, share of the busiest endpoint and payload variation.</li>
+<li><b>Anomaly detection:</b> an Isolation Forest trained on normal traffic (including flash sales) scores each step. A step is treated as an attack only if it is a statistical outlier and traffic is concentrated on one endpoint.</li>
+<li><b>Targeted rate limiting:</b> repeated identical payloads on the attacked endpoint are limited. Varied legitimate requests still pass.</li>
+<li><b>Forecasting:</b> a Gradient Boosting model predicts the clean request rate four seconds ahead from recent lags, trend and variance.</li>
+<li><b>Pre-warming:</b> instances needed for the forecast start immediately, so they are ready when demand lands.</li></ol>
+<h3>The baseline</h3><p>A Kubernetes HPA-style controller: it scales when utilisation exceeds 65 percent, evaluates every 2 steps, and waits 12 steps before scaling down. It reacts to all traffic, genuine or not.</p>
+<h3>The runtime</h3><p>Each instance is a real worker thread with a cold-start delay, pulling from a request queue. Latency is timed per request. The two systems run at the same time on the same pre-generated trace, so differences come from the scaling logic only.</p>
+<h3>Limitations</h3><p>The runtime is emulated on one machine, not a real Knative or Lambda cluster. Models are trained on synthetic normal traffic. Cost uses an illustrative price per instance-second. Time is scaled down (a 3 s cold start stands in for a real one).</p></div></div>
+
+<div class="pg" id="met"><div class="c"><h3>What each number means</h3><ul>
+<li><b>Average, p50, p95, p99 latency:</b> response time of legitimate requests, from arrival to completion. p95 means 95% of users were faster.</li>
+<li><b>Requests over SLA:</b> share of legitimate requests slower than your latency target.</li>
+<li><b>Cost:</b> billed instance-seconds multiplied by an illustrative price. Booting instances are billed.</li>
+<li><b>Instance-seconds wasted on attack:</b> extra instances kept running above the minimum while an attack was in progress.</li>
+<li><b>Attack requests blocked:</b> share of attack requests stopped by the filter.</li>
+<li><b>Legit requests wrongly blocked:</b> real users caught by the filter. Lower is better.</li>
+<li><b>Forecast error (WAPE):</b> total absolute forecast error divided by total actual load. Lower is better; sudden jumps are hard to predict.</li></ul></div></div>
+
+<footer>SmartScale runs entirely on this computer. Results vary slightly between runs because real threads and timers are involved.</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id),cs=n=>getComputedStyle(document.documentElement).getPropertyValue(n);
+const SC={flash:['Flash sale','Legitimate surge','Traffic climbs from about 25 to about 215 requests per second between 22 s and 37 s, stays high, then falls. Every request is a genuine customer spread across six endpoints.','Before: p95 latency spikes while new instances boot. After: the forecast starts instances early and latency stays flat. The filter should not flag this surge.'],
+ddos:['DDoS attack','Malicious traffic','From 30 s to 55 s, about 260 extra requests per second with identical payloads hit one endpoint (/api/search) on top of normal traffic.','Before: instances climb towards 40 and cost rises for fake traffic. After: the filter blocks repeated requests and instances stay low.'],
+mixed:['Flash sale, then attack','Hardest case','A real surge arrives first (18 s to 55 s), then an attack starts at 59 s while demand is still elevated.','Can the system admit the genuine surge yet block the attack? Look at the red bands: they should appear only during the attack.'],
+wave:['Smooth daily wave','Fair test','Demand rises and falls gently over the run, with no sudden jumps and no attacks.','The reactive scaler copes reasonably here, so the gap is small. This shows the improvement is not exaggerated.']};
+let sel='flash',curves={};
+$('sc').innerHTML=Object.entries(SC).map(([k,v],i)=>`<label><input type="radio" name="s" value="${k}" ${i?'':'checked'}><span class="tag">${v[1]}</span><b>${v[0]}</b></label>`).join('');
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button,.pg').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.p).classList.add('on')});
+function chart(id,ser,ymax,nt,bands,hline){const c=$(id),d=devicePixelRatio||1,W=c.clientWidth,H=c.clientHeight;c.width=W*d;c.height=H*d;const x=c.getContext('2d');x.scale(d,d);
+const L=36,X=i=>L+i/(nt-1)*(W-L-4),Y=v=>H-16-Math.min(v,ymax)/ymax*(H-22);x.font='11px system-ui';x.fillStyle=cs('--mu');x.strokeStyle=cs('--ln');
+for(let g=0;g<=4;g++){const y=Y(ymax*g/4);x.beginPath();x.moveTo(L,y);x.lineTo(W,y);x.stroke();x.textAlign='right';x.fillText(Math.round(ymax*g/4),L-4,y+4)}
+x.textAlign='center';for(let t=0;t<=nt;t+=40)x.fillText(t/2+'s',X(Math.min(t,nt-1)),H-3);
+if(bands){x.fillStyle=cs('--wn');bands.forEach((f,i)=>f&&x.fillRect(X(i)-1,6,X(1)-X(0)+1,H-22))}
+if(hline!=null){x.strokeStyle=cs('--mu');x.setLineDash([4,4]);x.beginPath();x.moveTo(L,Y(hline));x.lineTo(W,Y(hline));x.stroke()}
+ser.forEach(s=>{x.setLineDash(s.dash?[5,4]:[]);x.strokeStyle=s.col;x.lineWidth=2;x.beginPath();let on=false;s.d.forEach((v,i)=>{const j=s.sh?i+s.sh:i;if(v==null||j>=nt){on=false;return}on?x.lineTo(X(j),Y(v)):x.moveTo(X(j),Y(v));on=true});x.stroke()});x.setLineDash([])}
+function preview(){const v=SC[sel],c=curves[sel];$('st').textContent=v[0];$('sd').textContent=v[2];$('sw').textContent=v[3];
+ if(c)chart('cp',[{d:c.total,col:cs('--ink')},{d:c.attack,col:cs('--bf')}],Math.max(...c.total)*1.1,c.total.length)}
+document.querySelectorAll('input[name=s]').forEach(r=>r.onchange=()=>{sel=r.value;preview()});
+fetch('/api/scenarios').then(r=>r.json()).then(j=>{curves=j;preview()});
+$('go').onclick=()=>fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenario:sel,cold:+$('cold').value,sla:+$('sla').value,filter:$('flt').checked,forecast:$('fcs').checked})}).then(()=>{run={s:sel,c:+$('cold').value,f:$('flt').checked,p:$('fcs').checked}});
+$('stop').onclick=()=>fetch('/api/stop',{method:'POST'});
+const f=(v,d=0)=>v==null?'-':(+v).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+function kp(id,r){$(id).innerHTML=r?[['avg latency',f(r.avg)+' ms'],['p95',f(r.p95)+' ms'],['over SLA',f(r.sla,1)+'%'],['cost','$'+f(r.cost,4)]].map(a=>`<div>${a[0]}<b>${a[1]}</b></div>`).join(''):'<div class="mu" style="grid-column:1/-1">Waiting for a run</div>'}
+const ROWS=[['Average latency (ms)','avg',0,1],['p50 latency (ms)','p50',0,1],['p95 latency (ms)','p95',0,1],['p99 latency (ms)','p99',0,1],['Requests over SLA (%)','sla',1,1],['Cost ($)','cost',4,1],['Instance-seconds wasted on attack','waste',0,1],['Attack requests blocked (%)','blocked',1,0],['Legit requests wrongly blocked (%)','collateral',1,2],['Forecast error, WAPE (%)','mape',1,0]];
+const chg=(b,a)=>b>0?(Math.round((b-a)/b*100)>0?Math.round((b-a)/b*100)+'% lower':Math.round((b-a)/b*100)<0?Math.abs(Math.round((b-a)/b*100))+'% higher':'no change'):'no change';
+let busy=false,last='',run=null,hist=[];
+async function tick(){const s=await (await fetch('/api/state')).json(),R=s.series.reactive,P=s.series.predictive,nt=s.nt;
+ $('go').disabled=!['ready','done'].includes(s.status);$('msg').textContent={training:'Training models...',ready:'Ready',running:'Running...',done:'Finished'}[s.status];
+ if(R&&P){chart('c1',[{d:R.rps,col:cs('--ink')},{d:P.adm,col:cs('--af')},{d:P.fc,col:cs('--am'),dash:1,sh:8}],Math.max(100,...R.rps)*1.1,nt,P.flag);
+ chart('c2',[{d:R.p95,col:cs('--bf')},{d:P.p95,col:cs('--af')}],Math.max(600,...R.p95.filter(v=>v),...P.p95.filter(v=>v))*1.05,nt,null,s.sla);
+ chart('c3',[{d:R.inst,col:cs('--bf')},{d:P.inst,col:cs('--af')}],Math.max(10,...R.inst,...P.inst)+2,nt);
+ $('log').innerHTML=P.log.length?P.log.map(l=>`<div>${l}</div>`).join(''):'<div>No decisions yet.</div>'}
+ const r=s.result;kp('kr',r&&r.reactive);kp('kp',r&&r.predictive);
+ if(r){const Rr=r.reactive,Pp=r.predictive;
+  $('tb').innerHTML=ROWS.filter(x=>x[1]!='mape'||Pp.mape!=null).map(([n,k,d,m])=>{const b=Rr[k],a=Pp[k];return`<tr><td>${n}</td><td class="b">${b==null?'-':f(b,d)}</td><td class="a">${f(a,d)}</td><td>${m==1?chg(b,a):m==2?(a-b>=0?'+':'')+f(a-b,1)+' pts':''}</td></tr>`}).join('');
+  $('verdict').innerHTML=`<b>Summary:</b> p95 latency went from ${f(Rr.p95)} ms to ${f(Pp.p95)} ms (${chg(Rr.p95,Pp.p95)}), requests over the SLA from ${f(Rr.sla,1)}% to ${f(Pp.sla,1)}%, and cost from $${f(Rr.cost,4)} to $${f(Pp.cost,4)} (${chg(Rr.cost,Pp.cost)}).${Pp.blocked>0?` The filter blocked ${f(Pp.blocked,0)}% of attack requests and wrongly blocked ${f(Pp.collateral,1)}% of legitimate ones.`:''}`;
+  if(last=='running'&&run){hist.unshift(run.s);const v=SC[run.s][0];$('hs').innerHTML=(hist.length==1?'':$('hs').innerHTML);
+   $('hs').insertAdjacentHTML('afterbegin',`<tr><td>${v}</td><td>${run.c} s</td><td>${run.f?'on':'off'} / ${run.p?'on':'off'}</td><td class="b">${f(Rr.p95)} ms</td><td class="a">${f(Pp.p95)} ms</td><td class="b">$${f(Rr.cost,4)}</td><td class="a">$${f(Pp.cost,4)}</td></tr>`)}}
+ last=s.status}
+setInterval(()=>{if(!busy){busy=true;tick().finally(()=>busy=false)}},600);addEventListener('resize',preview);
+</script></body></html>
